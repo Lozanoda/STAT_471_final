@@ -1,4 +1,4 @@
-# Genetic markers of ALS <br/>STAT  471 Final Project<br/>David Lozano<br/>December 19,2021
+# Genetic markers of ALS <br/>STAT  471 Final Project<br/>David Lozano<br/>December 19, 2021
 
 **Problem.** Amyotrophic lateral sclerosis (ALS) is a fatal neurodegenerative disease for which there is no curative treatment and due to its slow onset, lacks clear markers for early diagnosis. Genetic biomarkers of ALS could revolutionize drug discovery for the disease and help clinicians with early diagnosis, thus leading to much better outcomes for patients. For these reasons I decided to investigate if gene expression levels collected from patient's blood samples could accurately classify ALS patients. Which if true, could be very useful with early diagnosis of the disease. Furthermore, I was interested to see if the genes found to be most predictive of an ALS diagnosis could give insights into the biology underlying the disease.
 
