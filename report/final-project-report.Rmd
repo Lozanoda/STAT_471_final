@@ -1,12 +1,23 @@
 ---
-title: 'COVID-19 and County Health'
-author: 'Seokyoon Chang, Jessica Mixon, Greta Maayan Waldman (Edited by Eugene Katsevich)'
-date: 'May 2, 2021'
+title: 'Genetic markers of ALS'
+author: 'David Lozano'
+date: 'December 18, 2021'
 output:
   bookdown::pdf_document2:
     number_sections: yes
     toc: yes
     toc_depth: '2'
+  html_document:
+    highlight: haddock
+    number_sections: yes
+    theme: lumen
+    toc: no
+    toc_depth: 4
+    toc_float: yes
+header-includes:
+ \usepackage{wrapfig}
+ \usepackage{float}
+ \floatplacement{figure}{H}    
 urlcolor: blue
 ---
 
@@ -18,239 +29,407 @@ library(kableExtra)
 
 \bigskip
 
-The code to reproduce this report is available [on Github](https://github.com/Katsevich-Teaching/final-project-template).
+The code to reproduce this report is available [on Github](https://github.com/Lozanoda/STAT_471_final).
 
 \newpage
 
 # Executive Summary
 
-**Problem.** Despite the growing body of research focused on understanding the progression of COVID-19, there is still much to be learned about population-level health factors that make some populations more susceptible to COVID-19 spread, case severity, and mortality. Hence, for our final project, we decided to look into various measures of health across US counties and analyze which factors were most predictive of case fatality rate throughout 2020, the first year of the COVID-19 pandemic. While only analyzing 2020 COVID-19 data only inherently limits our results, we also note 2020 data may actually be most likely to reflect differences in healthcare quality across counties, as it was in the early months of the pandemic that many health systems faced unique issues of resource scarcity.
+**Problem.** Amyotrophic lateral sclerosis (ALS) is a fatal neurodegenerative disease for which there is no curative treatment and due to its slow onset, lacks clear markers for early diagnosis. Genetic biomarkers of ALS could revolutionize drug discovery for the disease and help clinicians with early diagnosis, thus leading to much better outcomes for patients. For these reasons I decided to investigate if gene expression levels collected from patient's blood samples could accurately classify ALS patients. Which if true, could be very useful with early diagnosis of the disease. Furthermore, I was interested to see if the genes found to be most predictive of an ALS diagnosis could give insights into the biology underlying the disease.
 
-**Data.** Our dataset pulled data from two sources: a New York Times time series dataset which includes cumulative counts of COVID-19 cases and deaths at the county level, and data from County Health Rankings & Roadmaps, a program focused on collecting county-level data on a variety of health determinants. For the latter data source, we pulled 2019 or older data from various datasets on their website, as many key variables we wanted to study are still missing for 2020 and we assume that most county-level health determinants stayed very similar from 2019 to 2020. Our explanatory variables span the four main categories of health factors that the program identifies: health behaviors (e.g., smoking, sexual activity), clinical care (e.g., flu vaccine rate), social and economic factors (e.g., unemployment rate), and physical environment (e.g., degree of air pollution). Our primary response variable of interest was deaths per cases, which we created by dividing county-level deaths by count-level cases.
+**Data.** My dataset was an ALS research study obtained from the  National Institute of Health and submitted from the the University Medical Center Utrecht, in the Netherlands. This data set contained clinical and genetic data on over 700 patients. The explanatory variables were gene expression levels for all the genes detected in the patients blood samples. This consisted of around 29,000 genes, which I reduced to 2500 genes, essentially based on which genes were most likely to be changed between the classes. The primary response variable was patient diagnosis, which consisted of two classes, patients diagnosed with ALS and control patients.
 
-**Analysis.** Before exploring our data or running any analyses, we split our data into a training dataset and a test dataset, with the test dataset reserved for assessing and comparing model performance. Then, we explored our data to check for normality assumptions necessary for linear regression and to assess correlations between variables and between variables and the response. In order to build an optimal predictive model, we then built six different cross-validated models: ordinary least squares, ridge regression, LASSO regression, elastic net regression, random forest, and boosting. Of the regression models, elastic net had the lowest test error and of the tree-based models, the boosted model had the lowest test error (as well as the lowest test error overall).
+**Analysis.** I first split my data into a training data set and a test data. I then explored the training data by assessing the characteristics of the feature variables, which were gene expression levels and the response variable, which was the diagnosis of the patient. A key aspect of this exploratory analysis involved assessing how gene expression levels differed between the ALS class and control patient class. After exploring the data, I then tuned and tested 5 different cross validated classification models: logistic regression, LASSO regression, ridge regression, elastic net regression, and random forest. Overall the lasso regression performed the test with a test missclassification error of 13.5%. The tree based, random forest model had a test missclassification error of 16%.
 
-**Conclusions.** Interestingly, we found that the boosted and elastic net regression both pointed to similar types of variables as the strongest predictors of deaths per cases. Specifically, our optimal boosted model revealed that variables related to residential segregation and unemployment emerged as the most significant predictors, revealing that structural economic and health access inequalities were more predictive of COVID-19 deaths per cases than other variables. We hope that this analysis can inform policies aimed at improving health outcome determinants, both in the context of COVID-19 and more generally going forward. 
+**Conclusions.** I found that by using solely genetic data, which was not used for the original diagnosis, penalized regressions and random forests were able accurately diagnose ALS patients vs. controls ~85% of the time. This was well above chance and suggests that genes found in easily accessible blood samples, could be important supplements to diagnosing ALS. Furthermore 2 features were present in the top 10 predictive features of the best performing models. These features were the Atp5a1 gene and  AIF1 gene, which I discovered were indeed verified by scientific studies to be crucial in the onset/progression of ALS. I hope that these results provide further evidence that genetic data can be important diagnostic indicators, as well as important tools for revealing the mechanisms underlying ALS disease pathology.
 
 # Introduction
 
-**Background.** Coronavirus disease (COVID-19) has had a devastating global impact, with a cumulative total of 149,987,772 confirmed cases and 3,157,594 deaths worldwide as of April 28, 2021.^[Coronavirus Cases: Worldometer. (n.d.). https://www.worldometers.info/coronavirus/. 
-] About a fifth of these cases have been in the United States, with a recent count of 32,551,440 cases and 582,668 deaths.^[Ibid.] With these staggering numbers still increasing despite recent large-scale vaccine rollouts, it is of vital importance to utilize various data sources to understand both the progression of COVID-19 thus far as well as the highest risk factors for contracting COVID-19. Furthermore, a thorough analysis of COVID-19 rates and predictive factors may help inform strategies to improve public health policies that could mitigate the negative impact of a future pandemic, which many scientists say is not a matter of if but of when.^[Robbins, J. (2021, January 4). Heading Off the Next Pandemic. Kaiser Health News. https://khn.org/news/infectious-disease-scientists-preventing-next-pandemic/. ]
+**Background.** Amyotrophic lateral sclerosis (ALS) is a fatal neurodegenerative disease that progressively deteriorates motor neurons in the brain and spinal cord. Approximately 5,000 new cases of ALS occur each year in the United States, with initial symptoms of the disease being as subtle as muscle twitches in the limbs but respiratory muscle failure commonly occurring within 2-5 years of initial symptom presentation.^[Amyotrophic Lateral Sclerosis (ALS) Fact Sheet | National Institute of Neurological Disorders and Stroke. https://www.ninds.nih.gov/Disorders/Patient-Caregiver-Education/Fact-Sheets/Amyotrophic-Lateral-Sclerosis-ALS-Fact-Sheet/. 
+]. Currently there is no known cause of ALS, as it is a highly heterogeneous disease, arising from a combination of genetic and environmental factors. Due to this complexity, early diagnosis is difficult and only 2 FDA approved medications exist, which have been shown to increase survival by a few months.^[Amyotrophic Lateral Sclerosis (ALS) Fact Sheet | National Institute of Neurological Disorders and Stroke. https://www.ninds.nih.gov/Disorders/Patient-Caregiver-Education/Fact-Sheets/Amyotrophic-Lateral-Sclerosis-ALS-Fact-Sheet /.].
 
-Past research has shown that infectious diseases are influenced by a variety of factors. Obesity, for instance, is associated with a higher likelihood of contracting influenza A, and seasonal temperature changes have shown to be predictive of the 2003 severe acute respiratory syndrome (SARS).^[Tian, T., Zhang, J., Hu, L., Jiang, Y., Duan, C., Li, Z., ... & Zhang, H. (2021). Risk factors associated with mortality of COVID-19 in 3125 counties of the United States. Infectious diseases of poverty, 10(1), 1-8.] The CDC is currently in the process of identifying potential risk factors for severe COVID-19 illness,^[Centers for Disease Control and Prevention. (n.d.). Assessing Risk Factors for Severe COVID-19 Illness. Centers for Disease Control and Prevention. https://www.cdc.gov/coronavirus/2019-ncov/covid-data/investigations-discovery/assessing-risk-factors.html.] and some that have already been identified include heart disease, diabetes, and pregnancy.^[Centers for Disease Control and Prevention. (n.d.). Certain Medical Conditions and Risk for Severe COVID-19 Illness. Centers for Disease Control and Prevention. https://www.cdc.gov/coronavirus/2019-ncov/need-extra-precautions/people-with-medical-conditions.html.] Yet despite these efforts, there is still much to be learned. Specifically, there is still insufficient research to explain the differences in COVID-19 susceptibility and mortality that exist not just on the individual level but also on broader population levels. 
+A key development that would greatly accelerate continuing drug discovery and early diagnosis would be the discovery of a genetic biomarker for ALS. The discovery of a reliable biomarker, which could distinguish ALS patients early on, would lead to insight into which cellular and genetic pathways contribute to disease progression and thus lead to better drug targets. A blood biomarker would be the most advantageous, as it is much less invasive than tissue biopsies or cerebrospinal fluid samples and would be readily accessible for the majority of patients. Past research has found reliable risk factor gene mutations in certain families with highly heritable forms of ALS, theses genes seem to be involved in the mRNA processing and autophagy (waste clearance) cellular pathways.^[Balendra and Isaacs,  C9orf72-Mediated ALS and FTD. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6417666/.]. Unfortunately, the majority of ALS cases are not of this highly heritable form and more research is needed for finding which genes or combinations of genes could serve as reliable biomarkers in the majority of sporadic ALS cases.^[Amyotrophic Lateral Sclerosis (ALS) Fact Sheet | National Institute of Neurological Disorders and Stroke. https://www.ninds.nih.gov/Disorders/Patient-Caregiver-Education/Fact-Sheets/Amyotrophic-Lateral-Sclerosis-ALS-Fact-Sheet/.].
 
-**Analysis goals.** Given our knowledge of the capacity for a variety of factors to influence infectious disease spread as well as the fact that different counties in the US have differing levels of baseline health factors, we sought to investigate how rates of COVID-19 cases and deaths across the US are affected by various measures of community health. Specifically, we were interested in which kinds of factors (e.g., clinical, behavioral, health)—and which specific variables—are most predictive of deaths per cases (also known as case fatality rate). 
 
-**Significance.** We hope that our analysis will contribute to the growing body of research on COVID-19 risk factors by expanding our understanding of COVID-19 and supporting efforts to mitigate the risk of future pandemics. Our results also shed light on the importance of analyzing social determinants of health in efforts to improve health outcomes. 
+**Analysis goals.** As this dataset is one of the largest ever collected on ALS patients, I thought it would provide a great opportunity to investigate two major questions. One question was if/how well can modern edge data science techniques reliably classify ALS patients based only on their genetic data, which is rarely taken into consideration during clinical diagnosis. The second question was, what would be the subset of genes which would prove to the most important determinants in classifying ALS patients and what are these genes involved in.
+
+**Significance.** Based on these goals, I hope that the results from this report provide further support that large scale genetic data can be  useful in accurately diagnosing patients. Furthermore these results may be able to find novel genes/pathways which could be of importance to the disease  or further confirm the importance of established ALS related genes and cellular pathways.
 
 # Data
 
 ## Data sources
 
-Our dataset merged data from two sources: a dataset on US county-level health and a COVID-19 dataset that includes average cases and deaths per county. Each data source includes data from January 2020 to December 2020. 
+My dataset was obtained from the National Center for Biotechnology Information Gene Expression Omnibus (GEO), this is an international public repository that contains large scale genomic data submitted by individual researchers for public access. ^[https://www.ncbi.nlm.nih.gov/geo/info/overview.html.]. The submitted study I chose for this project was titled “Whole blood transcriptome analysis in amyotrophic lateral sclerosis: a biomarker study”^[ https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE112676.]
 
-The data regarding the health status of each county comes from County Health Rankings & Roadmaps, a program founded by the Robert Wood Johnson Foundation in collaboration with the University of Wisconsin Population Health Institute.^[County Health Rankings & Roadmaps. (n.d.) https://www.countyhealthrankings.org/] The program was designed to support community leaders in fostering equitable health outcomes by raising awareness about the variety of factors that influence length and quality of life, including economic and social factors. Specifically, the program considers all of the counties in the United States and includes measures of health behaviors, clinical care, social and economic factors, and the physical environment. In order to ensure a wide variety of explanatory variables in our dataset across the aforementioned categories, we pulled variables from the compiled dataset available on the program’s website and merged these variables into our final dataset.^[County Health Rankings & Roadmaps. (n.d.) 2021 Measures. https://www.countyhealthrankings.org/explore-health-rankings/measures-data-sources/2021-measures]
-
-The other dataset we drew from is the New York Times COVID-19 tracking dataset that includes cumulative COVID-19 cases and deaths in the United States at the county level.^[The New York Times Github. (n.d.) nytimes/covid-19-data. https://github.com/nytimes/covid-19-data] This time series dataset, compiled from state and local governments and health departments, includes data beginning from the first reported coronavirus case in Washington on Jan. 21, 2020. Times notes that because of the widespread shortage of testing in the first few months of the pandemic, the true COVID-19 prevalence—for those few months especially—may not be accurately represented in the data.  
+This study consisted of a dataset that contained blood mRNA expression of ALS patients and non ALS patients. The dataset was collected in Utrecht, Netherlands by the University Medical Center Utrecht and was made public on April, 05, 2018. The study was designed to identify blood genetic biomarkers for ALS. The dataset contained various files of which I chose to analyze three. The first of which is the file containing the mRNA expression levels for 29,830 gene transcripts for all of the patients. These expression values were log2 transformed and quantile normalized, which is standard for the field. The second file is clinical information file for each of the patients, with information such as which patient diagnosis sex, age at diagnosis, etc. Lastly there was a file which included documentation of the gene transcript, such as the associated functions of each transcript, the exact genetic sequence, etc.. I used an R package named "GEOquery" to download these files.  
 
 ## Data cleaning
 
-Our central task in the data cleaning phase of the project was merging the data from the two sources described above. Both data sources provided their respective data on a county level (classified as a 5-digit FIPS code). For each county in the New York Times COVID-19 dataset, the numbers of deaths and cases of COVID-19 were aggregated across 2020. We merged the two datasets on the county level, and then calculated the explanatory variables in accordance with the County Health Rankings Data Documentation. For the most part, the latter step consisted of dividing raw counts of a variable by the population of interest for the variable to calculate a percentage. 
+One of my main task in cleaning the data was in merging the  files to get one dataset that was in the tidy format. To achieve this, I had to find a common identifier that I could use to relate the gene expression data file from each patient to their clinical information file. This identifier was provided as each patient’s geo accession id. So after I trimmed the clinical information dataset to just each patient’s clinical diagnosis and their geo accession id, I joined this tibble to the processed gene expression tibble. This resulted in my final tidy tibble that contained all the gene expression levels for each patient as a feature and the final column was each patients diagnosis status which would serve as the response variable. 
+
+My other major task involved reducing the number of gene transcripts I would use for analysis, since 29,000 proved to be computationally infeasible for my resources. So I decided to use only gene transcripts that had no NA values for the associated cellular functional data. This allowed me to see which pathways and processes could be important in discriminating between the patient groups, this reduction step left me with around 12,000 gene transcripts. I then calculated the variance of each transcript in the dataset and selected the top 2,500 transcript with the most variance, which is an accepted practice in this field. and was used in page 345 of our ISLRv2 textbook ^[ Sohil, Sohali, and Shabbir, An Introduction to Statistical Learning with Applications in R.].
+
+Lastly I cleaned the text of the data frame describing the genes and their associated function to make it presentable for reading in this format and also for wordcloud processing. 
 
 ## Data description
 
 ### Observations
 
-Our dataset has a total of 935 observations, corresponding to each of the counties included in our analysis.
+My dataset had a total of 741 observations with each observation representing a patient. 
 
 ### Response Variable
 
-Our response variable is the cumulative COVID-19 deaths per cases for each county in the US. We created this variable via a simple mutate operation of cumulative cases per county divided by cumulative deaths per county. We use deaths per cases as our response variable as a proxy for case severity in different counties across the United States, as it inherently controls for population size variability. We do acknowledge, however, that using a single COVID-19 metric may not account for underlying heterogeneities between subgroups in each county, a bias that results from varied distributions within and between populations.^[U.S. News & World Report. (n.d.). COVID-19 Death Rate | Healthiest Communities. U.S. News & World Report. https://www.usnews.com/news/healthiest-communities/coronavirus-data/covid-death-rate?chart_type=line.]
+My response variable was patient diagnosis, which could be ALS or control. 233 of the response variables were ALS patients and 508 were control. I was mindful of a class imbalance, which I compensated for by tuning the threshold probability during the evaluation of the models. 
 
 ### Features
 
-Drawing on data from County Health Rankings & Roadmaps, we included 41 explanatory variables in our analysis, which fall into four main categories: health behaviors, clinical care, social and economic factors, and physical environment. For a detailed specification of these variables, refer to Appendix \@ref(appendix).
+I had 2,500 features in data set, each of which represented mRNA expression of gene transcripts, unfortunately describing these many genes in detail was unfeasible. However in the Appendix \@ref(appendix), I provided extended features details such as the full gene name, the cellular organelle and cellular function linked to the variables, for the subset of features used in the data exploration section.
+
 
 ## Data allocation
 
-Before building our predictive models, we first removed observations from the dataset for which any variables had NA values. We decided to do this for consistency purposes, as some data analysis methods we employed require that no variables contain NA fields. We then split our dataset into two subsets: a training dataset used for building our predictive models and a test dataset used for evaluating our models. We used an 80-20 split, such that the training dataset consists of 80% of our observations and the dataset consists of 20% of our observations. Although this train-test split was performed separately for each class of methods, we utilized a random seed to ensure that each split led to the same results. 
+As described in the data cleaning, I decided to only choose features that had no missing values and thus I did not have to remove any observations for inputs into my model predictions. I then decided to split the dataset into training/testing data with a 80/20 split. I decided this would be agreeable with my data because each of my observations is a patient and all patients have the same gene data were selected to be analyzed. In other words it  was my assumption that each observation is independent of each other, while being fairly uniform in features at the same time. I was weary of potential class imbalance as the dataset had 741 total patients, but only 233 of which were ALS patients. With the 80/20 split I ended up with ~48% of the training data being ALS patients and ~27% in the test set. I decided to keep this distribution as I thought it would be advantageous to have more ALS patients used in fitting the model than testing the model. Furthermore, I decided that I would address class imbalance, especially in my test set, during the tuning of my models. I ensured that the same training/testing datasets would be used for all the models by setting a seed for the split and saving the training and testing data as files which would then be loaded into each model. 
 
 ## Data exploration
 
 ### Response
 
-We first sought to understand the response variable’s distribution. As seen in the histogram of deaths variable (Figure \@ref(fig:response-histogram)), the data appears to be right-skewed, with some counties exceeding a death per cases rate of 0.1.  The median deaths per cases is 0.018. We proceeded to determine which counties had extreme response rates by looking at the sorted data. The sorted data (Table \@ref(tab:top-10-counties)) shows that aggregated across 2020, the highest rates of deaths per cases were primarily in northeastern states such as New York, New Jersey, and Connecticut.
+In Figure \@ref(fig:response-histogram), I quantified the response variable in the training data set, which was patient diagnosis and observed that 399 were ALS patients and 194 were control.   
 
-```{r response-histogram, out.width = "80%", fig.cap = "Distribution of case-fatality rate; vertical dashed line indicates the median.", fig.align='center', echo = FALSE}
+
+```{r response-histogram, out.width = "80%", fig.cap = "Distribution of ALS and non ALS patients.", fig.align='center', echo = FALSE}
 knitr::include_graphics("../results/response-histogram.png")
 ```
 
-```{r top-10-counties, message = FALSE, echo = FALSE}
-read_tsv("../results/top-10-counties-data.tsv") %>%
-  kable(format = "latex", row.names = NA, 
-        booktabs = TRUE, digits = 2, 
-        col.names = c("County", "State", "Case-fatality rate"),
-        caption = "Top ten counties by case-fatality rate 
-        (expressed as a percentage).") %>%
-  kable_styling(position = "center")
-```
 
 ### Features
 
-[Omitted from template.]
+To understand the genetic data provided I first sought to look at the overall distribution of gene expression values in the dataset as shown in Figure \@ref(fig:feature-response-histogram). The expression values had been log2 transformed and quantile normalized by the original researchers, which resulted in a fairly tight range of values with most  values ranging from 6 to 15. The mean expression value of this dataset was 8.6. I also looked at how the expression values for all the training features differed across the classes and could not see a noticeable difference (not shown).
+
+```{r feature-response-histogram, out.width = "80%", fig.cap = "Distribution of genetic expression values for all features in training set", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/exp-histogram.png")
+```
+
+Next I decided to look at the profiles a subset of genes that could be key predictors in distinguishing the two patient type. The first subset I chose to look at was a subset of the 40 features with the highest variance in the dataset. I chose to look at this subset as it is commonly thought that features with the most variance are more likely to be key in distinguishing between response classes. When I investigated how the expression values for this subset of features differed between the groups, I saw that the ALS group had slightly elevated expression levels compared to the control (Figure \@ref(fig:top40box)). I also was interested in seeing the correlations between the genes and if these differed across the patient groups. These results of the 5 most variable genes are shown in  Figure \@ref(fig:top40pairs) indicate that in this subset, many are correlated with each other as denoted by the asterisks. This could be due to many of the genes in this subset being involved in the same cellular pathways/functions. These correlations did not seem to be heavily altered by patient diagnosis, indicating that while some genes might be expressing at higher levels in the ALS group, their relationship with other gene may not necessarily be changing.
+
+```{r top40box, out.width = "80%", fig.cap = "Difference in total gene expression between ALS and control patients", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_boxplot.png")
+```
+```{r top40pairs, out.width = "80%", fig.cap = "Correlations of top 5 most variable genes to each other and across classes", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_pairs.png")
+```
+Based on these results from Figure \@ref(fig:top40box), I was interested in seeing which features were the ones increased in the ALS class. Thus I calculated how the mean expression values of each feature differs between the groups. The results from Figure \@ref(fig:top40), which represents the subtracted the mean gene expression values of the ALS group from the control group, show that 32 of the 40 most variable features had increased expression levels in the ALS group. 
+
+To understand what the genes which showed increased expression in ALS group could be involved in, I  decided to create visual word clouds of where in the cell (cellular organelles) these increased genes are localized to and what cellular pathways the genes are involved in (For the more details about these selected genes refer to the Appendix \@ref(appendix)). Figure \@ref(fig:upcomp) shows these upregulated genes were commonly localized to the cellular membrane, protein/receptor complexes and the cell's nucleus. Figure \@ref(fig:upproc) shows that these upregulated genes are commonly involved in the immune and cellular defense response, as well as cellular transport.(I have also included descriptive word clouds for the downregulated genes in the Appendix \@ref(appendix) ). These associated cellular regions and functions  align with many studies that have linked the motor neuron death that occurs in ALS to the inflammation response and protein recycling which heavily rely on cellular transport pathways.  ^[Amyotrophic Lateral Sclerosis (ALS) Fact Sheet | National Institute of Neurological Disorders and Stroke. https://www.ninds.nih.gov/Disorders/Patient-Caregiver-Education/Fact-Sheets/Amyotrophic-Lateral-Sclerosis-ALS-Fact-Sheet /.]
+
+```{r top40, out.width = "80%", fig.cap = "Gene expression changes in ALS patients relative to controls" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_changes.png")
+```
+
+```{r upcomp, out.width = "80%", fig.cap = "Common cell organelles for genes most upregulated ALS (from 40 most variable genes) " , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_up_component.png")
+```
+```{r upproc, out.width = "80%", fig.cap = "Common cellular functions for genes most upregulated ALS (from 40 most variable genes)" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_up_process.png")
+```
+I found the analysis of comparing which features are increased or decreased in the ALS patients to be very informative. Thus I decided to look at the top 40 genes which were most increased/decreased in the ALS group across the entire training dataset, not just the 40 most variable genes, which is shown in Figure \@ref(fig:highlow). Figure \@ref(fig:allupcomp) revealed that the genes whose expression was most increased in the ALS patients were heavily involved in cell membrane structures, with the second most common being those involved in the cell nucleus. As for the functional information, Figure \@ref(fig:allupproc) revealed that these genes were also strongly involved in various regulation pathways, such as neuronal synaptic regulation, cell death regulation, and gene survival regulation.  Figure \@ref(fig:allupproc) also showed that many of these genes were involved in protein degradation (refered to as ubiquitination) and protein transport. I found these results compelling as they were consistent with results of the 40 most variable genes and research in the field. 
+
+Next, I decided to look at the characteristics of the genes which were most decreased in the ALS class and if they differed from the upregulated genes. Figure \@ref(fig:alldowncomp) shows that these decreased ALS genes are heavily involved in the cell membrane and nucleus which was similar to the upregulated genes. However many were also being involved in the mitochondria, which was not as common in the upregulated genes. Figure \@ref(fig:alldownprocess) shows that these genes are involved in transport of various kinds, including protein transport, ion transport and cholesterol transport. This was similar to the upregulated genes, albeit not as many in the upregulated genes were involve ion transport. Many were also involved in RNA transcription regulation and processing, which was a commonality to the upregulated genes. 
+
+```{r highlow, out.width = "80%", fig.cap = "The top 20 genes most upregulated and top 20 most downregulated in ALS patients" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/high_low_bar.png")
+```
+```{r allupcomp, out.width = "80%", fig.cap = "Common cell organelles for genes most upregulated in ALS (all genes)" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/exp_diff_up_component.png")
+```
+
+```{r allupproc, out.width = "80%", fig.cap = "Common cellular functions for genes most upregulated ALS (all genes)" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/exp_diff_up_info_process.png")
+```
+```{r alldowncomp, out.width = "80%", fig.cap = "Common cell organelles for genes most downregulated in ALS (all genes)" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/exp_diff_down_info_component.png")
+```
+
+```{r alldownprocess, out.width = "80%", fig.cap = "Common cellular functions for genes most upregulated ALS (all genes)" , fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/exp_diff_down_info_process.png")
+```
 
 # Modeling
 
 ## Regression-based methods
 
-### Ordinary least squares
+### Logistic regression
 
-[Omitted from template.]
+I began my analysis by fitting a logistic regression on the all of the 2,500 features in the training set. I initially sought to use this fit to interpret the coefficients and extract insight into which of the genetic transcripts would be the most important predictors of patients diagnosis. As mentioned previously, the features in the data set had been log2 transformed and quantile normalized by the original researchers, as this is standard procedure for many publicly available genetic data sets. For this reason I felt it was not necessary to further transform or normalize the data.
+
+After the logistic regression was fit, I extracted the top 10 coefficients with the most positive values as well as the the top 10 most negative coefficients. Table \@ref(tab:glm-coefficients) shows these selected features, coefficients estimates,(sorted by descending value) and their associated cellular pathways for each of the coefficients. Interestingly, the variable with the highest positive coefficient was the gene NOVA1, which is localized to the cell nucleus and whose function is  crucial to locomotion activity, the main deficit in ALS. Overall, many of the variables with the top positive coefficients were localized to the cell nucleus and cell membrane. Their function was commonly linked to cellular transport pathways and transcription regulation. This was in agreement with the associated functions of the upregulated genes that were explored earlier and further indicated that alterations in cellular transport and transcription occur in ALS, which is indeed a common consensus in the field. As for the variable with the most negative coefficient values, they were also commonly localized to the plasma membrane and nucleus. Their associated functions did differ from the variables with positive coefficients in that there were  more genes associated with ion transport and cell signaling. The downregulated genes previously explored were also linked to signaling and transport pathways.
+  
+Lastly I sought to address a potential class imbalance in the data set by tuning the probability threshold to see which threshold value would give the optimal missclassification error.The results shown in Table \@ref(tab:glm-tune) demonstrate that is there is no optimal threshold value, as all the values provide the same missclassification error. This result occurred because the predicted probabilities for the classes were very close to 1 or an real number multiplied by e-16, meaning that essentially the probabilities already set the prediction at 0 or 1. Thus varying the thresholds would not change the result. This reveals that the logistic regression has a very poor performance in distinguishing between ALS and control subjects and is essentially guessing at chance. This poor performance is likely due to high variance overwhelming the model, as the number of features in the data set is more than triple the number of observations.
+  
+```{r glm-coefficients, message = FALSE, echo = FALSE}
+read_tsv("../results/glm_coeffs_20.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Feature variables with the top 10 largest logistic coefficients ") %>%
+  kable_styling(position = "center")%>%
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+```{r glm-tune, message = FALSE, echo = FALSE}
+read_tsv("../results/glm_threshs.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Missclassification error and related metrics for various thresholds") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = "HOLD_position")
+```
 
 ### Penalized regression
 
-Despite the ordinary least squares method seeming to work well, we realized that fitting a linear model with so many explanatory variables might incur a large cost in variance and lead to suboptimal predictions. Hence, we decided to build and evaluate shrinkage models with the hopes of getting a more parsimonious and interpretable model. We ran three cross-validated regressions for which optimal values of lambda were chosen according to the one-standard-error rule: ridge, LASSO (Least Absolute Shrinkage and Selection Operator), and elastic net. 
+Given that the logistic regression's poor performance was likely due to the high dimensional nature of the data, I decided to run penalized regressions which are more optimize for dealing with datasets with a large amount of features. Of the penalized regression models, I chose to run the ridge, LASSO (Least Absolute Shrinkage and Selection Operator), and elastic net models. All of these models went through  cross-validation to select the optimal values of lambda according to the one-standard-error rule. 
 
-For the lasso, Figure \@ref(fig:lasso-CV-plot) shows the CV plot, Figure \@ref(fig:lasso-trace-plot) shows the trace plot, and Table \@ref(tab:lasso-coefficients) shows the selected features and their coefficients. 
+*Lasso:* I show in Figure \@ref(fig:lasso-CV-plot) the cross validation plot for the Lasso, which demonstrates that the optimal model has only 46 feature. Table \@ref(tab:lasso-coefficients) shows the top 20 of these selected features. From the top 20 features, it can be seen that many of the selected genes are localized to nucleus and the mitochondrion, along with being important for cellular transport and RNA processing pathways.
 
-[Interpretation of lasso omitted from this template. Other penalized regression methods omitted from this template.]
+Figure \@ref(fig:lasso-trace-plot) essentially highlights the 10 most important features chosen by the model, and Table \@ref(tab:lasso-coefficients) shows the highlighted features exact coefficient values and their related functional cellular data.
 
+I also tested various classification thresholds shown in Table \@ref(tab:lasso-tune), which shows that the standard 0.5 threshold as being the optimal one.
 
 ```{r lasso-CV-plot, out.width = "90%", fig.cap = "Lasso CV plot.", fig.align='center', echo = FALSE}
 knitr::include_graphics("../results/lasso-cv-plot.png")
-```
-
-```{r lasso-trace-plot, out.width = "90%", fig.cap = "Lasso trace plot.", fig.align='center', echo = FALSE}
-knitr::include_graphics("../results/lasso-trace-plot.png")
 ```
 
 ```{r lasso-coefficients, message = FALSE, echo = FALSE}
 read_tsv("../results/lasso-features-table.tsv") %>%
   kable(format = "latex", row.names = NA, 
         booktabs = TRUE, digits = 2, 
-        col.names = c("Feature", "Coefficient"),
         caption = "Standardized coefficients for features in the lasso 
         model based on the one-standard-error rule.") %>%
-  kable_styling(position = "center")
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+
+```{r lasso-trace-plot, out.width = "90%", fig.cap = "Lasso trace plot.", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/lasso-trace-plot.png")
+```
+
+
+```{r lasso-trace-coefficients, message = FALSE, echo = FALSE}
+read_tsv("../results/lasso_trace_features.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = " Descriptions of the 10 selected features shown in the Lasso trace plot") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+```{r lasso-tune, message = FALSE, echo = FALSE}
+read_tsv("../results/lasso_threshs.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Missclassification error and related metrics for various thresholds") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = "HOLD_position")
+```
+
+
+
+*Elastic Net:* I found that the ideal elastic net model also proved to be a lasso regression, as Figure \@ref(fig:elnet-CV-plot) shows that the cross validation plot is the exact same as Figure \@ref(fig:lasso-CV-plot) and the optimal alpha chosen was 1. Hence the trace plot of the top selected features (Figure \@ref(fig:elnet-CV-plot) is also identical to those chosen by the lasso. The details of the genes can be found in Table \@ref(tab:lasso-coefficients), and the  the optimal threshold can be found in Table \@ref(tab:lasso-tune)
+
+```{r elnet-CV-plot, out.width = "90%", fig.cap = "Elastic net CV plot.", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/elnet-cv-plot.png")
+```
+```{r elnet-trace-plot, out.width = "90%", fig.cap = "Elastic net trace plot.", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/elnet-trace-plot.png")
+```
+
+*Ridge:*  Figure \@ref(fig:ridge-CV-plot) shows the cross validation plot for the Ridge regression. Figure \@ref(fig:ridge-trace-plot) highlights the 10 most important features chosen by the model, and Table \@ref(tab:ridge-trace-coefficients) shows the highlighted features exact coefficient values and their related functional cellular data. Similar to the lasso results, these highlighted genes are localized to nucleus and the mitochondrion, and are involved in cellular transport and RNA processing pathways. Lastly, I show the threshold tuning in Table \@ref(tab:ridge-tune), which again shows that the standard 0.5 threshold is being the optimal one.
+
+```{r ridge-CV-plot, out.width = "90%", fig.cap = "Lasso CV plot.", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/ridge-cv-plot.png")
+```
+
+```{r ridge-trace-plot, out.width = "90%", fig.cap = "Ridge trace plot.", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/ridge-trace-plot.png")
+```
+
+```{r ridge-trace-coefficients, message = FALSE, echo = FALSE}
+read_tsv("../results/ridge_features.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = " Descriptions of the 10 selected features shown in Ridge trace plot") %>%
+  kable_styling(position = "center") %>%
+   kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+```{r ridge-tune, message = FALSE, echo = FALSE}
+read_tsv("../results/ridge_threshs.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Missclassification error and related metrics for various thresholds") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = "HOLD_position")
 ```
 
 ## Tree-based methods
 
-[Omitted from template.]
-
 ### Random forest
 
-### Boosting
+I chose to fit a random forest, with the aim of seeing how a model which can consider more non linear solutions performs in this complex classification task.
+To optimize the random forest model I tested 25 different values m values (ranging from 1-2500), which are the number of features the model considers before making a split. Figure \@ref(fig:meval) shows the results of this testing, which revealed that m=1896 provided the lowest error. Figure \@ref(fig:mtree) shows how the random forest with the chosen M value performs as the number of trees increase from 1 to 500 trees, which correspond to the number of bootstraps the model aggregates over. This shows that there is a significant drop in the out of bag error after roughly 80 trees and the drop in error levels off around 400 trees. As the higher number of trees generally leads to better test performance I decided to use 500 trees for the tuned random forest model. 
 
+The features which the tuned model chose as most important to making its classification are shown in Figure \@ref(fig:rfimport). Table \@ref(tab:rfacc), shows the 15 most important variable as chosen by the mean decrease in accuracy index, which essentially is a measure of how much a  model's prediction accuracy is reduced when a feature is not included in the model. These features were genes that were commonly localized to the nucleus, the mitochondria, and cell membrane. Many of these genes were involved in RNA processing as well as stress and transport pathways. Table \@ref(tab:rfgini), shows the 15 most important variables as chosen by the gini index, which is measure of how much the model improves its classification when it splits on that given variable. These genes had many of the same characteristics as the ones chosen by the accuracy index, with the slight difference of having more genes that were localized to the cytoplasm/extra cellular space and more involved in various protein pathways vs RNA pathways.
+
+
+
+```{r meval, out.width = "90%", fig.cap = "Testing m values to find optimal value", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/rf_m_oob.png")
+```
+
+```{r mtree, out.width = "90%", fig.cap = "Optimal M value performace across 1-500 trees", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/rf_trees_oob.png")
+```
+
+
+```{r rfimport, out.width = "90%", fig.cap = "Features of most importance to random forest class predictions", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/rf_varImpPlot.png")
+```
+
+```{r rfacc, message = FALSE, echo = FALSE}
+read_tsv("../results/rf_acc.tsv") %>%
+  select(-c("MeanDecreaseAccuracy","MeanDecreaseGini"))%>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Specification of the 15 most important genes, as chosen by the mean decrease in accuracy index") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+```{r rfgini, message = FALSE, echo = FALSE}
+read_tsv("../results/rf_gini.tsv") %>%
+  select(-c("MeanDecreaseAccuracy","MeanDecreaseGini"))%>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Specification of the 15 most important genes, as chosen by the mean decrease in Gini index") %>%
+  kable_styling(position = "center") %>%
+ kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
 # Conclusions
 
 ## Method comparison
 
-```{r model-evaluation, message = FALSE, echo = FALSE}
-read_tsv("../results/model-evaluation.tsv") %>%
+```{r modelevaluation, message = FALSE, echo = FALSE}
+read_tsv("../results/model_evaluation.tsv") %>%
   kable(format = "latex", row.names = NA,
-        booktabs = TRUE, digits = 2,
-        caption = "Root-mean-squared prediction errors for lasso and ridge regressions.") %>%
-  kable_styling(position = "center")
+        booktabs = TRUE, digits = 3,
+        caption = "Test Missclassifcation error of tuned models") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = "HOLD_position")
 ```
 
-Table \@ref(tab:model-evaluation) shows the test RMSE for all the methods considered. Except for the OLS, the random forest and the boosted model have the lowest test errors. This is reasonable given these models’ tendencies to have high predictive accuracy. Between the two, the boosted model has the lowest test error, with a mean squared error of 0.000139, but it is closely followed by random forest, which has a mean squared error of 0.00141. Notably, however, the ridge, LASSO, and elastic net regressions perform about as well, with test MSEs of 0.000158, 0.000164, and 0.000161, respectively. Although OLS has the lowest training and test error, its adjusted R-squared value was only about 0.3, and there were too many features given the number of observations.
+Table \@ref(tab:modelevaluation) shows the test missclassifcation rate at the optimum threshold, and false positive/negative rates for all the methods considered. As an model class the penalized regressions, which were the Lasso and ridge performed the best. This was slightly surprising, as I predicted  the random forests to have the best performance, as I thought there would be more non linearity in the high dimensional data. The fact that the penalized regressions perform the best, indicates that reducing the dimensions/complexity of the features was most key to accurate classification in this dataset. 
 
-Regardless of these differences in test MSE, the methods overlap significantly in their identification of important variables from the larger set. For instance, the elastic net regression selects the following variables, which are also selected by LASSO and deemed significant in the OLS model: other providers ratio, unemployment, income inequality, housing overcrowding, residential segregation—non-White/White, homeownership, and physical inactivity. The random forest and boosting models both include low birthweight percentage, median income, and unemployment percentage in the top 10 most important variables, as measured by their contributions to node purity. 
+Thus the model that reduced the features the most, the Lasso regression, slightly outperformed the ridge by having the best overall test error of 0.135 or 13.5%. Furthermore, the lasso had the best false negative rate (33%) of all the models, indicating its algorithm reduced the amount of ALS patients which were classified as control. However the ridge had the lowest false positive rate at 5.5% (besides the logistics, which performed poorly overall), indicating that it was the best at properly distinguishing control patients from ALS patients. It seems though that it is difficult to develop an model which maintains the  false positive performance of the ridge, and the false negative performance of the LASSO, since the elastic net's attempts to do this resulted in a full lasso model.  The random forest model did perform much better (missclassification rate 16.2%) than the standard logistic regression model (missclassification rate 40.2%), but it did not outcompete the penalized regressions. Lastly given that all the regression models performed best at the standard threshold of 0.5 this indicates that the class imbalance was likely not a key driver of the missclassificaiton error. 
 
+There were general themes of which types of genes were chosen as top predictors by the models. The most common were genes localized to the cell membrane and cell nucleus. These genes were often involved in cellular transport of stress responses and RNA regulation. Slightly less common were genes in involved in the mitochondria and cytoplasm, which were commonly involved in stress responses, ion and protein transport. Surprisingly out of the thousands of genes there were two specific genes which were present in the lasso, ridge and random forest as top 15 predictor, these were the following: ATP5I, AIF1 (Table \@ref(tab:topgenes)). Moreover, these 9 genes were present as top 15 predictors in two of the three top models: CDC37, YARS, GABBR1, DEGS1, MRPS18c, TRDMT1, MMP9, SLC20A1, PRKAR1A (Table \@ref(tab:topgenes)).
+
+```{r topgenes, message = FALSE, echo = FALSE}
+read_tsv("../results/top_genes_mul_models.tsv") %>%
+  kable(format = "latex", row.names = NA,
+        booktabs = TRUE, digits = 3,
+        caption = "Genes which are top 15 predictors in multiple models") %>%
+  kable_styling(position = "center")  %>%
+ kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
 
 ## Takeaways
 
-Our results point to a few key determinants of health that, given their impact on COVID-19 deaths per cases rates in 2020, policymakers should consider when aiming to improve factors that would improve health overall but also potentially mitigate the mortality risk of another pandemic. The boosted model, which had the strongest predictive performance, suggests that residential segregation between non-white and white residents is the most important variable in predicting a county’s COVID-19 deaths per cases rate. The unemployment rate, availability of physical exercise opportunities, and measures of home ownership burden variables were also highly important in this model. These variables are identified across all models suggesting these relationships are robust. Residential segregation, unemployment, and home ownership burden are socioeconomic factors that affect an individual’s ability to access and pay for healthcare. In that regard, it is unsurprising that these factors would have a greater ability to predict differences in COVID-19 case fatalities across different counties in the United States. While some behavioral variables are also found to be significant (including STI incidence, high school completion, and others identified in the elastic net and lasso regressions), the variable importance ranking from the boosted model provides a highly interpretable hierarchy of the most influential factors from the greater set.
+My results show that analyzing genetic data can be of great value in diagnosing a complex disease such as ALS, as the best model was was able to distinguish ALS patients and control patients around 87% of the time, using only genetic data. In reality, a clinical diagnosis of ALS involves multiple hospital visits, usually over a protracted period of time and is only distinguishable from other possible diseases once the physical symptoms are severe. The majority of these patients never have any kind of genetic screening to help with the clinical diagnosis. Even this data set which is one of the largest collected on ALS patients, had only collected hundreds of ALS patient over years. This is pails in comparison to the thousands of clinical ALS diagnoses that are registered every year in just the U.S. 
 
-Given that socioeconomic factors were the strongest predictors of deaths per cases, it appears that on the county level, COVID-19 rates are most associated with community healthcare burdens. That is, COVID-19 outcomes appear to reflect the reality of healthcare accessibility across counties; those with high percentages of uninsured citizens, or with high degrees of segregation and inequality, might feature division of healthcare resources that reflects these disparities. It is thus reasonable that deaths per case rates would be higher when significant groups of a population have lesser access to healthcare resources and treatment. Notably, if our conclusions are indeed correct, this effect would likely be pronounced in situations of scarcity such as the early months of the pandemic studied here, when many hospitals faced shortages of ventilators and other resource shortages. Given the progression of COVID-19 since 2021 as well as the inherent complexity of fatality incidence, we are hesitant to make any assertive claims about the true predictive capacity of any of the top factors we identified. Nonetheless, these results can help inform policies directed toward improving various determinants of important health outcomes in counties across the US.  
+With genetic screening becoming more accessible, this data suggests that regular genetic screenings from the  blood samples from patients could serve as a very accessible and useful supplement to help clinicians make earlier diagnoses. However I think this data also suggests that diagnoses should not be made solely  on genetic data, as an missclassification rate of 87% is still too low to be reliable in a clinical setting. But it could be a key supplement for expert clinicians treating the disease.  Moreover, if genetic screenings did become more prevalent this would allow for larger datasets and more accurate genetic profiles for ALS. These larger data sets would not only help with diagnosing ALS but also with better understanding of the biological processes underlying disease and  possible treatments.
 
-As the world shifts towards herd immunity as vaccines are made more widely available, it is important to reflect upon how the pandemic has asymmetrically impacted different counties across the country. Our results suggest that structural vulnerabilities can be captured by measures of inequality and poverty; the identification of counties high on these factors should serve as a warning for future vulnerability to health crises. These analyses can serve to protect already vulnerable communities from suffering disproportionately in the future. 
+To that end, my findings also revealed that two genes were especially key in helping the 3 best performing models classify between ALS patients and control patients. These two genes could be insights into the biology drving the disease. The first of these genes was the Atp5a1 gene, which is important for mitochondrial function. Interestingly a 2019 scientific study in a leading journal, found that ALS onset in ALS mouse models of the disease was in part caused by abnormal Atp5a1 expression and mitochondrial defects via this dysfunction in the pathway^[Choi et al., “C9ORF72-ALS/FTD-Associated Poly(GR) Binds Atp5a1 and Compromises Mitochondrial Function in Vivo.”]. The second gene was the AIF1 gene, which is involved in the cellular inflammatory stress response. For this gene, there were also studies in both humans and mice, which linked AIF1 to  being involved in ALS. It was especially important for the degeneration of neurons in ALS via the glia inflammatory pathway^[Tam, Oliver H., Nikolay V. Rozhkov, Regina Shaw, Duyang Kim, Isabel Hubbard, Samantha Fennessey, Nadia Propp, et al. “Postmortem Cortex Samples Identify Distinct Molecular Subtypes of ALS: Retrotransposon Activation, Oxidative Stress, and Activated Glia.” Cell Reports 29, no. 5 (October 29, 2019): 1164-1177.e5. https://doi.org/10.1016/j.celrep.2019.09.066.
+] ^[Peng et al., “Loss of TDP-43 in Astrocytes Leads to Motor Deficits by Triggering A1-like Reactive Phenotype and Triglial Dysfunction.”]. Overall the ability of the models to extract these two genes, from the thousands in the dataset, which are verified as causal contributers to ALS onset and progression is very exciting. Perhaps with larger datasets or more complex models more genes such as these or even novel genes, which are crucial to the disease, can be discovered and used to develop better treatments. 
 
 
 ## Limitations
 
 ### Dataset limitations
 
-As it is detailed in the Frequently Asked Questions page of County Health Rankings & Roadmaps program  website,^[County Health Rankings & Roadmaps. (n.d.) Frequently Asked Questions. https://www.countyhealthrankings.org/explore-health-rankings/faq-page] all of the variables are from 2019 or earlier. Thus, it is possible that the values of the variables assessed were different in 2020, meaning that the interpretation of our analysis may need to be taken with a grain of salt. Regardless, given that we analyzed data on the county level, it is unlikely that any county experienced enough drastic change over the course of the year to significantly affect our analysis. Furthermore, our dataset has a large number of observations to account for potential variability, although notably, many observations had to be removed as some of the R packages used to build some of our models required that no NA values were present in the data. In other words, since each observation represents a different US county, many counties were left out of our analysis. Another limitation is that, as described in the Exploratory Data Analysis section, there is evidence of correlation amongst some of our explanatory variables. This means that some variables can be confounding variables, which mask or distort the relationship between measured variables. Also, variables selected in the LASSO regression and elastic net regression as well as variables marked important in the tree methods might be misleading in that, given how variable selection works, it is possible that some selected variables are simply representative of a larger group of correlated variables. 
+A key limitation of this dataset is that the gene expression values had undergone preprocessing and normalization steps at the discretion of the original researchers. It is entirely conceivable that if a different normalization pipeline had been used on the data, that would lead to different features being selected as important by the predictive models or even ultimately changing model performance. A second limitation of that dataset is the limited number of patients. While 700 observations is well above the requirement for this report, when there are 29,000 or even 2,500 features, that leads to high dimensional data, which requires careful analysis and model tuning. The problem caused by this high dimensional data was clearly shown by the poor performance of the logistic regression model. This model  was clearly overwhelmed with the variance introduced by have some many more features than observations and a dataset with less feature would likely been better for a logistic regression. Lastly there was a small class imbalance, as there were 233  ALS patients and 508 control patients in the entire dataset and this distribution was even more imbalanced in the test set used here. Fortunately in this case it seemed to not be a major issue, as the best threshold was still 0.5 but it is still not ideal to have uneven classes. 
+
 
 ### Analysis limitations
 
-While splitting the data into training and testing datasets allows for a more unbiased test of the models, we recognize that our conclusions inherently contain some randomness due to the random split of the data. In other words, splitting the data again using a different random seed may have yielded different p-values in the OLS regression, different selected variables in the shrinkage methods, and different variables selected as important in the tree-based methods. Next, although we provide different methods for robust interpretation of the variables, our analysis incorporates only a specific subset of health related variables. The results of the analysis might change dramatically if we were to incorporate other variables. For example, as mentioned in the Exploratory Data Analysis, states in the northeastern part of the United States suffered from a high rate of COVID-19 cases and deaths in 2020. This may not have been because these states performed poorly in the health variables mentioned above. Rather, it may be due to the fact that these states are densely populated and hence were more susceptible to disease spread at the outset of the COVID-19 pandemic. In other words, other factors like geographic or demographic variables can hugely impact case fatality rate. 
+Due to the computational costs of analyzing all the 29,000 features, I was only able to use 2,500 of the most variable features in my analysis. Not being able to use all the gene feature data available was in my opinion was the biggest limitation in my analysis. While selecting a subset of genes based on variance is an accepted method, it is possible that I was missing features that could have led to better performance or been more predictive than the 2,500 selected features. However even with 2,500 features, I was limited in the analysis I could do because of computational costs. For example it was not possible to visualize or compute the relationships of all 2,500 to each other or to the response variable. For this reason, I could only include subsets of 40 genes in my exploratory analysis, because creating correlation plots for 2,500 was not possible for my computer. Even if it was computationally feasible these plots would not have been interpretable. Also it was limiting to not know the details of all the features in my data set, this made comparing which features were most important across models much more difficult than in datasets with less than 100 features. Overall the high dimensionality of the data proved to be very difficult analysis problem, as it meant many viable features were excluded, interpretability of features/feature importance was lost and models took much longer to run. 
+
 
 ## Follow-ups
 
-To compensate for the limitations mentioned above, more extensive analysis can be done as we acquire more data from 2020 and 2021. Not only can we extend our analysis by utilizing the most up-to-date datasets, but we can also examine how COVID-19 cases and deaths have affected various health factors of each county. In other words, the explanatory and response variables can be reversed to conduct more dynamic data analyses. Next, given that many observations needed to be omitted in our dataset as they contained NA fields, we recommend that our analyses be reconducted once the missing data is collected. Finally, future work on the social determinants of health in the context of COVID-19 might also look at different population levels such as states, bigger geographical regions in America, or even different countries.
+As a follow up to overcome the data limitations, I would recommend adding more ALS datasets in order to increase the  number of observations and even the classes.  It could also be interesting to access the unprocessed files and experiment with different normalization methods of the data to see if the results are altered. As for analysis follow ups I would recommend trying models that are highly adept at high dimensional data such as neural networks of various kinds. Lastly it would be very informative to see if selecting a subset of the data by some other dimensionality reduction technique ,such as PCA, would lead to similar results. 
+
 
 \appendix
 
-# Appendix: Descriptions of features {#appendix}
+# Appendix: Descriptions of features used in exploratory analysis {#appendix}
 
-Below are the 41 features we used for analysis. Words written in parentheses represent variable names. Unless noted otherwise, all variables are continuous. 
+Table \@ref(tab:40mostvar) shows the details of the 40 most variable genes in the training data set that provide insight into the gene function and associations. 
 
-**Health behaviors:** 
+These details include:
 
-- *Tobacco Use*
-  - Adult smoking (`smoke_perc`): Percentage of adults who are current smokers.
-- *Diet and Exercise* 
-  - Adult obesity (`obesity_perc`): Percentage of the adult population (age 20 and older) reporting a body mass index (BMI) greater than or equal to 30 kg/m2.
-  - Food environment index (`food_environment`): Index of factors that contribute to a healthy food environment, from 0 (worst) to 10 (best).
-  - Physical inactivity (`inactive_perc`): Percentage of adults age 20 and over reporting no leisure-time physical activity.
-  - Access to exercise opportunities (`physical_exercise_opportunities`): Percentage of population with adequate access to locations for physical activity
-  - Food insecurity (`Food_Insecure_perc`): Percentage of population who lack adequate access to food.
-  - Limited access to healthy foods (`limited_healthy_access`): Percentage of population who are low-income and do not live close to a grocery store.
-- *Alcohol & Drug Use*
-  - Excessive Drinking (`drinking_perc`): Percentage of adults reporting binge or heavy drinking.
-- *Sexual Activity*
-  - Sexually transmitted infections (`stis`): Number of newly diagnosed chlamydia cases per 100,000 population.
-  - Teen births (`teen_births`): Number of births per 1,000 female population ages 15-19.
-  - Low Birth Weight Percentage (`low_birthweight_percentage`): Percentage of live births with low birthweight (< 2,500 grams).
+**1.** The feature ID, which is the name used in most of the feature plots in the report.
 
-**Clinical care:**
+**2.** The gene acronym, the most common way to refer to a gene in the field.
 
-- *Access to Care*
-  - Uninsured (`uninsured`): Percentage of population under age 65 without health insurance.
-  - Primary care physicians (`primarycare_ratio`): Ratio of population to primary care physicians.
-  - Dentists (`dentist_ratio`): Ratio of population to dentists. 
-  - Mental health providers (mentalhealth_ratio): Ratio of population to mental health providers.
-  - Other primary care providers (`otherproviders_ratio`): Ratio of population to primary care providers other than physicians.
-- *Quality of Care*
-  - Preventable hospital stays (`preventable_hospitalization`): Rate of hospital stays for ambulatory-care sensitive conditions per 100,000 Medicare enrollees.
-  - Mammography screening (`mammogram_perc`): Percentage of female Medicare enrollees ages 65-74 that received an annual mammography screening.
-  - Flu vaccinations (`flu_vaccine_perc`): Percentage of fee-for-service (FFS) Medicare enrollees that had an annual flu vaccination.
-  - Teen births (`teen_births`): Number of births per 1,000 female population ages 15-19.
+**3.** The extended gene name from which the acronym arises.
 
-**Social and economic factors:** 
+**4.** The associated cellular component which describes a cellular organelle the gene has been localized to. In reality genes are often expressed in many organelles but for simplicity/comprehension only 1 is shown for each gene
 
-- *Education*
-  - High school completion (`HS_completion`): Percentage of adults ages 25 and over with a high school diploma or equivalent.
-  - Some college (`some_college`): Percentage of adults ages 25-44 with some post-secondary education.
-  - Disconnected youth (`disconnected_youth`): Percentage of teens and young adults ages 16-19 who are neither working nor in school.
-- *Employment*
-  - Unemployment (`unemployment`): Percentage of population ages 16 and older who are unemployed but seeking work.
-- *Income* 
-  - Children in poverty (`children_poverty_percent`): Percentage of people under age 18 in poverty.
-  - Income inequality (`income_inequality`): Ratio of household income at the 80th percentile to income at the 20th percentile.
-  - Median household income (`median_income`): The income where half of households in a county earn more and half of households earn less.
-  - Children eligible for free or reduced price lunch (`children_freelunches`): Percentage of children enrolled in public schools that are eligible for free or reduced price lunch.
-- *Family & Social Support*
-  - Children in single-parent households (`single_parent_households`): Percentage of children that live in a household headed by a single parent.
-  - Social associations (`social_associations`): Number of membership associations per 10,000 residents. 
-  - Residential segregation—Black/White (`segregation_black_white`): Index of dissimilarity where higher values indicate greater residential segregation between Black and White county residents.
-  - Residential segregation—non-White/White (`segregation_nonwhite_white`): Index of dissimilarity where higher values indicate greater residential segregation between non-White and White county residents.
-- *Community Safety*
-  - Violent crime rate (`Violent_crime`) Number of reported violent crime offenses per 100,000 residents. 
+**5.** The associated cellular process,this aims to cover the general cellular pathway the genes have been linked to, such as DNA regulation.
 
-**Physical environment:**
+**6.** The associated cellular function, this aims to be slightly more specific than pathways and state within the pathway what specific task the gene is important for, for example zinc ion binding.
 
-- *Air & Water Quality*
-  - Air pollution - particulate matter (`air_pollution`): Average daily density of fine particulate matter in micrograms per cubic meter (PM2.5).
-  - Drinking water violations (`water_violations`): Indicator of the presence of health-related drinking water violations. 1 indicates the presence of a violation, 0 indicates no violation.
-- *Housing & Transit*
-  - Housing overcrowding (`housing_overcrowding`): Percentage of households with overcrowding, 
-  - Severe housing costs (`high_housing_costs`): Percentage of households with high housing costs
-  - Driving alone to work (`driving_alone_perc`): Percentage of the workforce that drives alone to work.
-  - Long commute—driving alone (`long_commute_perc`): Among workers who commute in their car alone, the percentage that commute more than 30 minutes.
-  - Traffic volume (`traffic_volume`): Average traffic volume per meter of major roadways in the county.
-  - Homeownership (`homeownership`): Percentage of occupied housing units that are owned.
-  - Severe housing cost burden (`severe_ownership_cost`): Percentage of households that spend 50% or more of their household income on housing.
+
+```{r 40mostvar, message = FALSE, echo = FALSE}
+read_tsv("../results/ALS_40_diff_info.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Specifications of 40 most variable gene transcripts in training set ") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+**20 most upregulated gene transcripts in ALS patients:**
+
+Table \@ref(tab:20top) shows the details of the 20 genes which were most upregulated in ALS patients.
+
+```{r 20top, message = FALSE, echo = FALSE}
+read_tsv("../results/exp_diff_up_info.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Specifications of 20 most upregulated genes in ALS patients in the training set ") %>%
+  kable_styling(position = "center") %>%
+   kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+**20 most downregulated gene transcripts in ALS patients:**
+
+Table \@ref(tab:20down) shows the details of the 20 genes which were most upregulated in ALS patients.
+
+```{r 20down, message = FALSE, echo = FALSE}
+read_tsv("../results/exp_diff_down_info.tsv") %>%
+  kable(format = "latex", row.names = NA, 
+        booktabs = TRUE, digits = 2, 
+        caption = "Specifications of 20 most downregulated genes in ALS patients in the training set ") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+**Word clouds for most downregulated genes within the 40 most variable genes**
+
+```{r , out.width = "90%", fig.cap = "Common cellular organelles for genes most downregulated ALS (from 40 most variable genes)", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_down_component.png")
+```
+
+```{r , out.width = "90%", fig.cap = "Common cellular functions for genes most downregulated ALS (from 40 most variable genes)", fig.align='center', echo = FALSE}
+knitr::include_graphics("../results/top40_down_process.png")
+```

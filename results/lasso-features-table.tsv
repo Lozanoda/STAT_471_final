@@ -1,14 +1,21 @@
-feature	coefficient
-median_income	0.2876184634883651
-segregation_nonwhite_white	0.26803917428682056
-unemployment	0.15598308612721185
-severe_ownership_cost	0.1503899970554152
-long_commute_perc	0.12123908690113616
-income_inequality	0.10739029231890711
-inactive_perc	0.09544557508846462
-homeownership	0.08444250905576353
-high_housing_costs	0.07852663418203733
-otherproviders_ratio	0.07530637897429575
-low_birthweight_percentage	0.031674706618148286
-flu_vaccine_perc	0.016815257230187227
-air_pollution	3.4220989076147484e-4
+Feature ID	coefficient	Gene Acronym	Extended Gene Name	Associated Cellular Component	Associated Cellular Process	Associated Cellular Function
+ILMN_1703538	-0.4182277954051016	AIF1	allograft inflammatory factor 1 (AIF1)	nucleus	response to stress	calcium ion binding
+ILMN_1671661	-0.3346560950520407	HSD17B7	hydroxysteroid (17-beta) dehydrogenase 7 (HSD17B7)	membrane	metabolism	oxidoreductase activity
+ILMN_1796316	0.316029603850657	MMP9	matrix metallopeptidase 9 (gelatinase B	extracellular matrix (sensu Metazoa)	peptidoglycan metabolism	zinc ion binding
+ILMN_1726603	-0.29143736745070953	ATP5I	ATP synthase	mitochondrion	ion transport	metal ion binding
+ILMN_1684982	0.2867689365509536	PDK4	pyruvate dehydrogenase kinase	mitochondrion	glucose metabolism	ATP binding
+ILMN_1766010	-0.2433060496511909	YARS	tyrosyl-tRNA synthetase (YARS)	extracellular space	cell motility	ligase activity
+ILMN_1727184	0.179429487619815	WDR36	WD repeat domain 36 (WDR36)	small nucleolar ribonucleoprotein complex	rRNA processing	snoRNA binding
+ILMN_1777220	-0.17572965421113979	VCP	valosin-containing protein (VCP)	cytosol	transport	nucleotide binding
+ILMN_2395375	-0.17332701010445933	GABBR1	gamma-aminobutyric acid (GABA) B receptor	integral to membrane	negative regulation of adenylate cyclase activity	receptor activity
+ILMN_1748770	-0.1611791914996738	CKAP5	cytoskeleton associated protein 5 (CKAP5)	centrosome	RNA transport	binding
+ILMN_2404112	0.16005554053731025	TRDMT1	tRNA aspartic acid methyltransferase 1 (TRDMT1)	nucleus	tRNA processing	transferase activity
+ILMN_1691181	0.14836021869071433	TXNDC1	thioredoxin domain containing 1 (TXNDC1)	membrane fraction	cell proliferation	protein disulfide oxidoreductase activity
+ILMN_1772492	-0.11998275652482009	MCART1	mitochondrial carrier triple repeat 1 (MCART1)	mitochondrion	transport	binding
+ILMN_1680703	0.11272854102103151	MRPS15	mitochondrial ribosomal protein S15 (MRPS15)	mitochondrion	protein biosynthesis	structural constituent of ribosome
+ILMN_1715963	-0.10671323473855768	FBXO7	F-box protein 7 (FBXO7)	ubiquitin ligase complex	ubiquitin-dependent protein catabolism	ubiquitin-protein ligase activity
+ILMN_1741143	-0.09668819390345448	TXK	TXK tyrosine kinase (TXK)	cytoplasm	protein amino acid phosphorylation	ATP binding
+ILMN_2313730	-0.08919909026341101	RHOC	ras homolog gene family	membrane	positive regulation of I-kappaB kinase/NF-kappaB cascade	signal transducer activity
+ILMN_1696485	-0.08389969196740409	HNRNPAB	heterogeneous nuclear ribonucleoprotein A/B (HNRNPAB)	nucleus	mRNA editing	mRNA binding
+ILMN_1745395	0.05548476083269473	CTCFL	CCCTC-binding factor (zinc finger protein)-like (CTCFL)	nucleus	regulation of transcription, DNA-dependent	zinc ion binding
+ILMN_1755992	-0.05333735874825381	UCP3	uncoupling protein 3 (mitochondrial	integral to membrane	mitochondrial transport	transporter activity
